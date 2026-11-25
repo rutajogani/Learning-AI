@@ -41,12 +41,12 @@ const user = "Hey, What is the weather of surat?";
 async function chat() {
   const result = await client.chat.completions.create({
     model: "openai/gpt-oss-120b",
-    messages:
-      [{role: "system", content: SYSTEM_PROMPT}]
-      [{ role: "user", content: user }],
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: user },
+    ],
   });
   console.log(result.choices[0].message.content);
 }
 
-chat();
-
+chat().catch(console.error);
