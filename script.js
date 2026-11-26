@@ -1,4 +1,5 @@
 import OpenAI from "openai"
+import { fromX509 } from "openai/auth/x509-transport.js";
 import reaslinesync from "readlinesycn"
 // import 'dotenv/config'
 
@@ -22,6 +23,8 @@ const SYSTEM_PROMPT = `
   After Planning, Take the action with appropriate tools and wait for Obeservaation based on Action.
   Once you get the Obeservaation, Return the AI response based on START propmt and Obeservaation
 
+  Strictly follow the JSON putput format as in examples
+  
   Avaliable Tools:
   - function getWeatherDetails(city = string) : string
   getWeatherDetails is a function that accepts city name as string and retuen the wearther details
@@ -55,5 +58,25 @@ const messages = [{ role: 'system', content : SYSTEM_PROMPT}]
 
 while (true) {
   const query = reaslinesync.question('>> ');
-}
+  const q = {
+    type: 'user',
+    user: query,
+  };
+  messages.push({ "role": "user", content: JSON.stringify(q) });
+  
+  while (true) {
+    const chat = client.chat.completions.create({
+      model: "openai/gpt-oss-120b",
+      messages: messages,
+      response_format: { type: 'jsone_object' },
+    });
+    const result = chat.shoices[0].message.content;
+    messages.push({ role: 'assistant', content: result });
 
+    const call = JSON.parse(result);
+
+    if (call.type == 'output') {
+      console.log(`🤖: ${call.output}`);
+    }
+  }
+}
