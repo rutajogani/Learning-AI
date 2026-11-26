@@ -1,7 +1,6 @@
 import OpenAI from "openai"
-import { fromX509 } from "openai/auth/x509-transport.js";
-import reaslinesync from "readlinesycn"
-// import 'dotenv/config'
+import readlineSync from "readline-sync";
+import 'dotenv/config'
 
 const client = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
@@ -61,7 +60,7 @@ const SYSTEM_PROMPT = `
 const messages = [{ role: 'system', content : SYSTEM_PROMPT}]
 
 while (true) {
-  const query = reaslinesync.question('>> ');
+  const query = readlineSync.question(">> ");
   const q = {
     type: 'user',
     user: query,
@@ -69,12 +68,12 @@ while (true) {
   messages.push({ "role": "user", content: JSON.stringify(q) });
   
   while (true) {
-    const chat = client.chat.completions.create({
+    const chat = await client.chat.completions.create({
       model: "openai/gpt-oss-120b",
-      messages: messages,
-      response_format: { type: 'jsone_object' },
+      messages,
+      response_format: { type: 'json_object' },
     });
-    const result = chat.shoices[0].message.content;
+    const result = chat.choices[0].message.content;
     messages.push({ role: 'assistant', content: result });
 
     const call = JSON.parse(result);
