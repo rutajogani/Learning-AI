@@ -17,6 +17,10 @@ function getWeatherDetails(city = "") {
   if (city.toLowerCase() === "kerala") return "9°c";
 }
 
+const tools = {
+  "getWeatherDetails": getWeatherDetails
+}
+
 const SYSTEM_PROMPT = `
   You are an AI Assistant with START, PLAN, ACTION, Obeservaation ans Output State.
   Wait for the use prompt and first PLAN using available tools.
@@ -77,6 +81,12 @@ while (true) {
 
     if (call.type == 'output') {
       console.log(`🤖: ${call.output}`);
+      break
+    } else if (call.type == 'action') {
+      const fn = tools[call.function]
+      const observation = fn(call.input)
+      const obs = { "type": "obeservaation", "obeservaation": observation }
+      messages.push({ role: 'developer', content: JSON.stringify(obs) });
     }
   }
 }
