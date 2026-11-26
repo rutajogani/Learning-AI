@@ -1,5 +1,6 @@
 import OpenAI from "openai"
-import 'dotenv/config'
+import reaslinesync from "readlinesycn"
+// import 'dotenv/config'
 
 const client = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
@@ -37,16 +38,22 @@ const SYSTEM_PROMPT = `
   {"type": "output","output": "The sum of weather of surat and gova is 22°c"}
 `
 
-const user = "Hey, What is the weather of surat?";
-async function chat() {
-  const result = await client.chat.completions.create({
-    model: "openai/gpt-oss-120b",
-    messages:
-      [{role: "system", content: SYSTEM_PROMPT}]
-      [{ role: "user", content: user }],
-  });
-  console.log(result.choices[0].message.content);
-}
+// const user = "Hey, What is the weather of surat?";
+// async function chat() {
+//   const result = await client.chat.completions.create({
+//     model: "openai/gpt-oss-120b",
+//     messages:
+//       [{role: "system", content: SYSTEM_PROMPT}]
+//       [{ role: "user", content: user }],
+//   });
+//   console.log(result.choices[0].message.content);
+// }
+// 
+// chat();
 
-chat();
+const messages = [{ role: 'system', content : SYSTEM_PROMPT}]
+
+while (true) {
+  const query = reaslinesync.question('>> ');
+}
 
