@@ -19,7 +19,6 @@ function getWeatherDetails(city = "") {
 
   return `I don't have weather data for ${city}.`;
 }
-
 const availableTools = {
   getWeatherDetails,
 };
@@ -56,10 +55,8 @@ const messages = [
 async function main() {
   while (true) {
     const query = readlineSync.question(">> ").trim();
-
     if (!query) continue;
     if (query.toLowerCase() === "exit") break;
-
     messages.push({ role: "user", content: query });
 
     while (true) {
@@ -78,22 +75,17 @@ async function main() {
           const functionName = toolCall.function.name;
           const args = JSON.parse(toolCall.function.arguments);
           const fn = availableTools[functionName];
-
           const result = fn
             ? fn(args.city)
             : `Unknown tool: ${functionName}`;
-
           messages.push({
             role: "tool",
             tool_call_id: toolCall.id,
             content: String(result),
           });
         }
-
-        // Send the tool result back to the model for its answer.
         continue;
       }
-
       console.log(`🤖: ${assistantMessage.content ?? ""}`);
       break;
     }
