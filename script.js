@@ -1,6 +1,6 @@
-import OpenAI from "openai"
+import OpenAI from "openai";
 import readlineSync from "readline-sync";
-import 'dotenv/config'
+import "dotenv/config";
 
 const client = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
@@ -8,84 +8,98 @@ const client = new OpenAI({
 });
 
 function getWeatherDetails(city = "") {
-  if (city.toLowerCase() === "surat") return "10°c";
-  if (city.toLowerCase() === "rajasthan") return "14°c";
-  if (city.toLowerCase() === "gova") return "12°c";
-  if (city.toLowerCase() === "kashnir") return "8°c";
-  if (city.toLowerCase() === "himachal") return "6°c";
-  if (city.toLowerCase() === "kerala") return "9°c";
+  const name = city.trim().toLowerCase();
+
+  if (name === "surat") return "10°C";
+  if (name === "rajasthan") return "14°C";
+  if (name === "goa" || name === "gova") return "12°C";
+  if (name === "kashmir" || name === "kashnir") return "8°C";
+  if (name === "himachal") return "6°C";
+  if (name === "kerala") return "9°C";
+
+  return `I don't have weather data for ${city}.`;
 }
 
-const tools = {
-  "getWeatherDetails": getWeatherDetails
-}
+const availableTools = {
+  getWeatherDetails,
+};
 
-const SYSTEM_PROMPT = `
-  You are an AI Assistant with START, PLAN, ACTION, Obeservaation ans Output State.
-  Wait for the use prompt and first PLAN using available tools.
-  After Planning, Take the action with appropriate tools and wait for Obeservaation based on Action.
-  Once you get the Obeservaation, Return the AI response based on START propmt and Obeservaation
+const toolDefinitions = [
+  {
+    type: "function",
+    function: {
+      name: "getWeatherDetails",
+      description: "Get weather details for a city",
+      parameters: {
+        type: "object",
+        properties: {
+          city: {
+            type: "string",
+            description: "The city or region to check",
+          },
+        },
+        required: ["city"],
+        additionalProperties: false,
+      },
+    },
+  },
+];
 
-  Strictly follow the JSON putput format as in examples
-  
-  Avaliable Tools:
-  - function getWeatherDetails(city = string) : string
-  getWeatherDetails is a function that accepts city name as string and retuen the wearther details
-  
-  Example:
-  START
-  {"type": "user","user": "what is the sum of weather of surat and gova"}
-  {"type": "plan","plan": "i will call the getWeatherDetails for surat"}
-  {"type": "action","function": "getWeatherDetails", "input": "surat"}
-  {"type": "obeservaation","obeservaation": 10°c}
-  {"type": "plan","plan": "i will call the getWeatherDetails for gova"}
-  {"type": "action","function": "getWeatherDetails", "input": "gova"}
-  {"type": "obeservaation","obeservaation": 12°c}
-  {"type": "output","output": "The sum of weather of surat and gova is 22°c"}
-`
+const messages = [
+  {
+    role: "system",
+    content:
+      "You are a helpful assistant. For weather questions, use getWeatherDetails, then answer the user clearly using the tool result.",
+  },
+];
 
-// const user = "Hey, What is the weather of surat?";
-// async function chat() {
-//   const result = await client.chat.completions.create({
-//     model: "openai/gpt-oss-120b",
-//     messages:
-//       [{role: "system", content: SYSTEM_PROMPT}]
-//       [{ role: "user", content: user }],
-//   });
-//   console.log(result.choices[0].message.content);
-// }
-// 
-// chat();
-
-const messages = [{ role: 'system', content : SYSTEM_PROMPT}]
-
-while (true) {
-  const query = readlineSync.question(">> ");
-  const q = {
-    type: 'user',
-    user: query,
-  };
-  messages.push({ "role": "user", content: JSON.stringify(q) });
-  
+async function main() {
   while (true) {
-    const chat = await client.chat.completions.create({
-      model: "openai/gpt-oss-120b",
-      messages,
-      response_format: { type: 'json_object' },
-    });
-    const result = chat.choices[0].message.content;
-    messages.push({ role: 'assistant', content: result });
+    const query = readlineSync.question(">> ").trim();
 
-    const call = JSON.parse(result);
+    if (!query) continue;
+    if (query.toLowerCase() === "exit") break;
 
-    if (call.type == 'output') {
-      console.log(`🤖: ${call.output}`);
-      break
-    } else if (call.type == 'action') {
-      const fn = tools[call.function]
-      const observation = fn(call.input)
-      const obs = { "type": "obeservaation", "obeservaation": observation }
-      messages.push({ role: 'developer', content: JSON.stringify(obs) });
+    messages.push({ role: "user", content: query });
+
+    while (true) {
+      const completion = await client.chat.completions.create({
+        model: "openai/gpt-oss-120b",
+        messages,
+        tools: toolDefinitions,
+        tool_choice: "auto",
+      });
+
+      const assistantMessage = completion.choices[0].message;
+      messages.push(assistantMessage);
+
+      if (assistantMessage.tool_calls?.length) {
+        for (const toolCall of assistantMessage.tool_calls) {
+          const functionName = toolCall.function.name;
+          const args = JSON.parse(toolCall.function.arguments);
+          const fn = availableTools[functionName];
+
+          const result = fn
+            ? fn(args.city)
+            : `Unknown tool: ${functionName}`;
+
+          messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: String(result),
+          });
+        }
+
+        // Send the tool result back to the model for its answer.
+        continue;
+      }
+
+      console.log(`🤖: ${assistantMessage.content ?? ""}`);
+      break;
     }
   }
 }
+
+main().catch((error) => {
+  console.error("Error:", error.message);
+});
